@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Legend Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { display: flex; flex-direction: column; height: 100vh; background-color: #e8f1fc; color: #1e293b; overflow: hidden; user-select: none; }
+
+    /* Header Styles */
+    header { background-color: #ffffff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; height: 60px; border-bottom: 1px solid #d1d5db; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn { background: none; border: none; color: #2563eb; font-size: 22px; cursor: pointer; display: none; margin-right: 4px; }
+    .app-avatar { width: 42px; height: 42px; border-radius: 50%; background: #93c5fd; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; color: #1e3a8a; overflow: hidden; flex-shrink: 0; border: 1px solid #bfdbfe; }
+    .app-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .header-info { display: flex; flex-direction: column; }
+    .header-title { font-size: 16px; font-weight: 600; color: #0f172a; }
+    .header-status { font-size: 12px; color: #2563eb; }
+
+    /* Container Area */
+    .main-container { flex: 1; position: relative; width: 100%; overflow: hidden; }
+
+    /* View Screens */
+    .tab-screen { display: none; flex-direction: column; height: 100%; width: 100%; background-color: #e8f1fc; overflow-y: auto; }
+    .tab-screen.active-tab { display: flex; }
+
+    /* Stories Bar (Telegram Style) */
+    .stories-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid #d1d5db; overflow-x: auto; background-color: #ffffff; flex-shrink: 0; }
+    .stories-bar::-webkit-scrollbar { display: none; }
+    .story-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; }
+    .story-ring { width: 62px; height: 62px; border-radius: 50%; padding: 2px; background: linear-gradient(135deg, #2563eb, #38bdf8); display: flex; align-items: center; justify-content: center; }
+    .story-ring.my-story { background: #cbd5e1; position: relative; }
+    .story-avatar { width: 100%; height: 100%; border-radius: 50%; background-color: #93c5fd; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; color: #1e3a8a; overflow: hidden; text-transform: uppercase; }
+    .story-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .add-story-icon { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; background-color: #2563eb; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: bold; }
+    .story-username { font-size: 11px; color: #475569; max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+
+    /* Story Fullscreen Viewer Modal */
+    .story-viewer-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 2000; display: none; flex-direction: column; justify-content: space-between; }
+    .story-progress-container { display: flex; gap: 4px; padding: 10px 12px; position: absolute; top: 0; left: 0; width: 100%; z-index: 10; }
+    .story-progress-bar { flex: 1; height: 3px; background-color: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
+    .story-progress-fill { height: 100%; width: 0%; background-color: #fff; transition: width 0.1s linear; }
+    .story-header-overlay { display: flex; align-items: center; justify-content: space-between; padding: 24px 16px 10px; position: absolute; top: 0; left: 0; width: 100%; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent); }
+    .story-author-info { display: flex; align-items: center; gap: 10px; }
+    .story-author-avatar { width: 36px; height: 36px; border-radius: 50%; background-color: #93c5fd; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #1e3a8a; overflow: hidden; }
+    .story-author-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .story-author-name { font-size: 14px; font-weight: 600; color: #fff; }
+    .story-time { font-size: 11px; color: rgba(255,255,255,0.7); }
+    
+    .story-header-right { display: flex; align-items: center; gap: 10px; }
+    .story-delete-btn { background: rgba(255, 82, 82, 0.2); border: none; color: #ff5252; font-size: 18px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .story-close-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0 8px; }
+
+    .story-content-container { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative; }
+    .story-img-display { max-width: 100%; max-height: 100%; object-fit: contain; }
+    
+    .story-bottom-stats { position: absolute; bottom: 75px; left: 16px; display: flex; gap: 8px; z-index: 10; }
+    .media-stat-badge { display: flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); padding: 5px 10px; border-radius: 12px; color: #ffffff; font-size: 13px; font-weight: 500; }
+    .media-stat-badge svg { fill: #ffffff; opacity: 0.9; }
+
+    .story-footer-overlay { position: absolute; bottom: 0; left: 0; width: 100%; padding: 12px 16px; background: linear-gradient(to top, rgba(0,0,0,0.85), transparent); display: flex; align-items: center; gap: 8px; z-index: 10; }
+    .story-comment-input { flex: 1; background: rgba(255,255,255,0.2); border: none; border-radius: 20px; padding: 10px 16px; color: #fff; font-size: 14px; outline: none; backdrop-filter: blur(4px); }
+    .story-comment-input::placeholder { color: rgba(255,255,255,0.7); }
+    .story-send-btn { background-color: #2563eb; color: #fff; width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; backdrop-filter: blur(4px); }
+    
+    .story-action-btn { background: none; border: none; color: #ffffff; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); transition: transform 0.2s, color 0.2s; flex-shrink: 0; }
+    .story-action-btn:active { transform: scale(0.9); }
+    .story-action-btn.liked { color: #ff5252; }
+
+    /* Direct Chat Room Screen */
+    #chat-room-screen { display: flex; flex-direction: column; position: absolute; top: 0; left: 0; height: 100%; width: 100%; background-color: #e8f1fc; z-index: 50; transform: translateX(100%); transition: transform 0.2s ease-in-out; }
+    #chat-room-screen.active { transform: translateX(0); }
+
+    /* Chat List Screen */
+    .chat-list { flex: 1; overflow-y: auto; }
+    .chat-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid #d1d5db; cursor: pointer; transition: background 0.2s; position: relative; }
+    .chat-item:hover { background-color: #dbeafe; }
+    .chat-item-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #60a5fa, #2563eb); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; color: #fff; text-transform: uppercase; flex-shrink: 0; overflow: hidden; }
+    .chat-item-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .chat-item-content { flex: 1; min-width: 0; }
+    .chat-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .chat-item-name { font-size: 15px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-item-time { font-size: 11px; color: #64748b; }
+    .chat-item-msg { font-size: 13px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    /* Unread Badge */
+    .unread-badge { background-color: #2563eb; color: white; font-size: 11px; font-weight: bold; padding: 2px 7px; border-radius: 10px; display: none; }
+
+    /* Floating Action Button */
+    .fab { position: absolute; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #38bdf8); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; border: none; z-index: 5; transition: transform 0.2s; }
+    .fab:active { transform: scale(0.95); }
+
+    /* Direct Messages Area */
+    #chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background-color: #e8f1fc; }
+    .msg-wrapper { display: flex; flex-direction: column; max-width: 78%; margin-bottom: 2px; cursor: pointer; }
+    .msg-wrapper.sent { align-self: flex-end; }
+    .msg-wrapper.received { align-self: flex-start; }
+    .msg { padding: 8px 12px; border-radius: 12px; font-size: 15px; line-height: 1.4; word-break: break-word; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .sent .msg { background-color: #2563eb; color: #ffffff; border-bottom-right-radius: 4px; }
+    .received .msg { background-color: #ffffff; color: #0f172a; border-bottom-left-radius: 4px; border: 1px solid #cbd5e1; }
+    .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+    .received .msg-footer { color: #64748b; }
+    .msg img, .msg video { max-width: 100%; border-radius: 8px; margin-top: 6px; display: block; }
+    .file-card { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 8px; text-decoration: none; color: inherit; margin-top: 6px; font-size: 13px; }
+
+    /* Reply Quote Box inside Message */
+    .reply-quote { background: rgba(0,0,0,0.1); border-left: 3px solid #ffffff; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 6px; }
+    .received .reply-quote { background: #f1f5f9; border-left-color: #2563eb; color: #1e293b; }
+    .reply-quote-sender { font-weight: bold; font-size: 11px; margin-bottom: 2px; }
+
+    /* Active Reply Banner Above Input */
+    #reply-banner { display: none; background: #ffffff; padding: 8px 12px; border-top: 1px solid #d1d5db; align-items: center; justify-content: space-between; font-size: 13px; }
+    #reply-banner-content { border-left: 3px solid #2563eb; padding-left: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+    #cancel-reply-btn { background: none; border: none; color: #dc2626; font-size: 16px; cursor: pointer; padding-left: 8px; font-weight: bold; }
+
+    /* Message Action Context Menu Modal */
+    .msg-action-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 3000; display: none; align-items: flex-end; justify-content: center; backdrop-filter: blur(2px); }
+    .msg-action-card { background: #ffffff; width: 100%; max-width: 450px; border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+    .msg-action-btn { background: #f1f5f9; border: none; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 600; color: #0f172a; cursor: pointer; text-align: center; transition: background 0.2s; }
+    .msg-action-btn:hover { background: #e2e8f0; }
+
+    /* Input Bar */
+    #input-box { background-color: #ffffff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #d1d5db; }
+    .input-field { flex: 1; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 20px; padding: 10px 16px; color: #0f172a; font-size: 15px; outline: none; }
+    .btn-icon { background: none; border: none; color: #2563eb; font-size: 22px; cursor: pointer; }
+    .btn-send { background-color: #2563eb; color: #fff; width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    input[type="file"] { display: none; }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav { background-color: #ffffff; border-top: 1px solid #d1d5db; height: 62px; display: flex; justify-content: space-around; align-items: center; z-index: 20; flex-shrink: 0; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: none; border: none; color: #64748b; cursor: pointer; padding: 6px 0; transition: color 0.2s; }
+    .nav-item.active { color: #2563eb; }
+    .nav-icon-wrapper { position: relative; display: flex; align-items: center; justify-content: center; width: 48px; height: 26px; border-radius: 16px; transition: background 0.2s; }
+    .nav-item.active .nav-icon-wrapper { background-color: rgba(37, 99, 235, 0.1); }
+    .nav-icon { font-size: 20px; }
+    .nav-profile-avatar { width: 24px; height: 24px; border-radius: 50%; background: #93c5fd; display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 10px; color: #1e3a8a; border: 1px solid #cbd5e1; }
+    .nav-item.active .nav-profile-avatar { border-color: #2563eb; }
+    .nav-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .nav-label { font-size: 11px; font-weight: 500; }
+
+    /* Generic Page Content */
+    .page-padding { padding: 16px; }
+    .page-card { background-color: #ffffff; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    
+    /* Telegram Style Profile Page */
+    .profile-header { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 10px 0 20px; }
+    .profile-avatar-container { position: relative; width: 90px; height: 90px; margin: 0 auto; }
+    .profile-avatar-large { width: 90px; height: 90px; border-radius: 50%; background: #93c5fd; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; color: #1e3a8a; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; border: 2px solid #ffffff; }
+    .profile-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+    .change-photo-btn { position: absolute; bottom: 0; right: 0; width: 32px; height: 32px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .profile-name { font-size: 20px; font-weight: 600; color: #0f172a; margin-top: 4px; }
+    .profile-sub { font-size: 13px; color: #2563eb; }
+
+    .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-title { font-size: 15px; color: #0f172a; word-break: break-word; }
+    .setting-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* Profile Stories Grid */
+    .profile-section-title { font-size: 14px; font-weight: 600; color: #2563eb; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .profile-stories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 20px; }
+    .profile-story-cell { position: relative; aspect-ratio: 3/4; background: #ffffff; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #cbd5e1; }
+    .profile-story-cell img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-story-stats { position: absolute; bottom: 6px; left: 6px; display: flex; gap: 6px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 3px 6px; border-radius: 8px; font-size: 10px; color: #fff; align-items: center; }
+    .profile-story-stats span { display: flex; align-items: center; gap: 2px; }
+
+    /* Modals */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px); }
+    .modal-card { background-color: #ffffff; width: 100%; max-width: 380px; border-radius: 16px; padding: 24px; text-align: center; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .modal-icon { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #bfdbfe; background: #eff6ff; }
+    .modal-icon img { width: 100%; height: 100%; object-fit: cover; }
+    .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: #0f172a; }
+    .modal-subtitle { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    .modal-input { width: 100%; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 16px; color: #0f172a; font-size: 15px; outline: none; margin-bottom: 12px; }
+    textarea.modal-input { min-height: 80px; resize: none; }
+    .modal-error { color: #dc2626; font-size: 13px; margin-bottom: 12px; display: none; text-align: left; background: rgba(220,38,38,0.1); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #dc2626; }
+    .modal-buttons { display: flex; gap: 10px; margin-top: 8px; }
+    .modal-btn { flex: 1; background-color: #2563eb; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .modal-btn.cancel { background-color: #f1f5f9; color: #64748b; }
+  </style>
+</head>
+<body>
+
+  <svg style="display:none;">
+    <defs>
+      <g id="default-logo-svg">
+        <rect width="100%" height="100%" fill="#e0f2fe"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="#93c5fd" stroke-width="3"/>
+        <path d="M50 10 A40 40 0 0 1 50 90 A40 40 0 0 1 50 10" fill="none" stroke="#60a5fa" stroke-width="2"/>
+        <path d="M10 50 H90" fill="none" stroke="#60a5fa" stroke-width="2"/>
+        <rect x="35" y="35" width="30" height="30" rx="6" fill="none" stroke="#2563eb" stroke-width="4" transform="rotate(-45 50 50)"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <button class="back-btn" id="back-btn">←</button>
+      <div class="app-avatar" id="header-avatar">
+        <svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#default-logo-svg"/></svg>
+      </div>
+      <div class="header-info">
+        <span class="header-title" id="header-title">Legend</span>
+        <span class="header-status" id="header-status">chats</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Views Area -->
+  <div class="main-container">
+
+    <!-- TAB 1: CHATS SCREEN -->
+    <div class="tab-screen active-tab" id="chats-tab-screen">
+      <div class="stories-bar" id="stories-bar-container">
+        <div class="story-item" id="add-story-item">
+          <div class="story-ring my-story">
+            <div class="story-avatar" id="my-story-avatar-display">
+              <svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#default-logo-svg"/></svg>
+            </div>
+            <div class="add-story-icon">+</div>
+          </div>
+          <span class="story-username">My Story</span>
+        </div>
+        <input type="file" id="story-file-input" accept="image/*">
+      </div>
+
+      <div class="chat-list" id="chat-list"></div>
+      <button class="fab" id="fab-start-chat" title="New Chat">💬</button>
+    </div>
+
+    <!-- TAB 2: CONTACTS SCREEN -->
+    <div class="tab-screen page-padding" id="contacts-tab-screen">
+      <div class="page-card">
+        <div class="setting-item" id="add-contact-item">
+          <div>
+            <div class="setting-title">➕ Add Contact</div>
+            <div class="setting-desc">Find someone by username</div>
+          </div>
+          <span style="color:#2563eb; font-size:20px;">›</span>
+        </div>
+      </div>
+      <h4 style="color:#64748b; margin-bottom:10px; font-weight:500;">Your Contacts</h4>
+      <div id="contacts-list" class="chat-list"></div>
+    </div>
+
+    <!-- TAB 3: SETTINGS SCREEN -->
+    <div class="tab-screen page-padding" id="settings-tab-screen">
+      <div class="page-card">
+        <div class="setting-item" id="settings-username-item">
+          <div>
+            <div class="setting-title">👤 Username</div>
+            <div class="setting-desc" id="settings-username-display">@user</div>
+          </div>
+          <span style="color:#2563eb; font-size:13px;">Change</span>
+        </div>
+      </div>
+      <div class="page-card">
+        <div class="setting-item" id="enable-notif-btn">
+          <div>
+            <div class="setting-title">🔔 Enable Push Notifications</div>
+            <div class="setting-desc">Click to allow browser notifications</div>
+          </div>
+          <span style="color:#2563eb; font-size:13px;">Allow</span>
+        </div>
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">🔒 Privacy and Security</div>
+            <div class="setting-desc">Firebase Encrypted Database</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: PROFILE SCREEN -->
+    <div class="tab-screen page-padding" id="profile-tab-screen">
+      <div class="profile-header">
+        <div class="profile-avatar-container">
+          <div class="profile-avatar-large" id="profile-avatar-large">
+            <svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#default-logo-svg"/></svg>
+          </div>
+          <label for="profile-photo-input" class="change-photo-btn" title="Change Photo">📷</label>
+          <input type="file" id="profile-photo-input" accept="image/*">
+        </div>
+        <div class="profile-name" id="profile-display-name">Username</div>
+        <div class="profile-sub" id="profile-display-handle">@username</div>
+      </div>
+
+      <div class="page-card">
+        <div class="setting-item" id="edit-username-item">
+          <div>
+            <div class="setting-title" id="profile-username-val">@username</div>
+            <div class="setting-desc">Username (Tap to edit)</div>
+          </div>
+          <span style="color:#2563eb; font-size:16px;">✏️</span>
+        </div>
+        <div class="setting-item" id="edit-bio-item">
+          <div>
+            <div class="setting-title" id="profile-bio-val">Hey there! I am using Legend Chat.</div>
+            <div class="setting-desc">Bio (Tap to edit)</div>
+          </div>
+          <span style="color:#2563eb; font-size:16px;">✏️</span>
+        </div>
+      </div>
+
+      <div class="profile-section-title">My Stories Archive</div>
+      <div class="profile-stories-grid" id="profile-stories-grid">
+        <div style="grid-column: span 3; text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No stories posted yet.</div>
+      </div>
+    </div>
+
+    <!-- DIRECT CHAT ROOM -->
+    <div id="chat-room-screen">
+      <div id="chat-messages"></div>
+      
+      <!-- Active Reply Banner -->
+      <div id="reply-banner">
+        <div id="reply-banner-content"></div>
+        <button id="cancel-reply-btn">✕</button>
+      </div>
+
+      <div id="input-box">
+        <label class="btn-icon" for="file-input" title="Attach File">📎</label>
+        <input type="file" id="file-input">
+        <input type="text" class="input-field" id="message-input" placeholder="Write a message...">
+        <button class="btn-send" id="send-btn">➤</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Message Action Modal (Long Press Menu) -->
+  <div class="msg-action-modal" id="msg-action-modal">
+    <div class="msg-action-card">
+      <button class="msg-action-btn" id="action-reply-btn">↩️ Reply</button>
+      <button class="msg-action-btn" id="action-forward-btn">↪️ Forward</button>
+      <button class="msg-action-btn" id="action-cancel-btn" style="background:#f1f5f9; color:#64748b;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Forward Selection Modal -->
+  <div class="modal-overlay" id="forward-modal" style="display: none;">
+    <div class="modal-card">
+      <h2 class="modal-title">Forward To</h2>
+      <p class="modal-subtitle">Select a chat to forward message.</p>
+      <div id="forward-chats-list" style="max-height: 200px; overflow-y: auto; text-align: left; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+      <button class="modal-btn cancel" id="forward-cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Story Fullscreen Viewer Modal -->
+  <div class="story-viewer-modal" id="story-viewer-modal">
+    <div class="story-progress-container">
+      <div class="story-progress-bar"><div class="story-progress-fill" id="story-progress-fill"></div></div>
+    </div>
+    <div class="story-header-overlay">
+      <div class="story-author-info">
+        <div class="story-author-avatar" id="story-viewer-avatar">U</div>
+        <div>
+          <div class="story-author-name" id="story-viewer-name">User</div>
+          <div class="story-time" id="story-viewer-time">Just now</div>
+        </div>
+      </div>
+      <div class="story-header-right">
+        <button class="story-delete-btn" id="story-delete-btn" title="Delete Story">🗑️</button>
+        <button class="story-close-btn" id="story-close-btn">✕</button>
+      </div>
+    </div>
+    <div class="story-content-container">
+      <img id="story-viewer-img" class="story-img-display" src="" alt="Story">
+      
+      <div class="story-bottom-stats">
+        <div class="media-stat-badge">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          <span id="story-view-count">1</span>
+        </div>
+        <div class="media-stat-badge">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <span id="story-like-count">0</span>
+        </div>
+      </div>
+
+      <div class="story-footer-overlay" id="story-footer-overlay">
+        <input type="text" class="story-comment-input" id="story-comment-input" placeholder="Reply to story...">
+        <button class="story-send-btn" id="story-send-comment-btn" title="Send Comment">➤</button>
+        <button class="story-action-btn" id="story-like-btn" title="Like Story">❤️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" data-tab="chats-tab-screen" data-title="Legend" data-status="chats">
+      <div class="nav-icon-wrapper"><span class="nav-icon">💬</span></div>
+      <span class="nav-label">Chats</span>
+    </button>
+    <button class="nav-item" data-tab="contacts-tab-screen" data-title="Contacts" data-status="list">
+      <div class="nav-icon-wrapper"><span class="nav-icon">👤</span></div>
+      <span class="nav-label">Contacts</span>
+    </button>
+    <button class="nav-item" data-tab="settings-tab-screen" data-title="Settings" data-status="preferences">
+      <div class="nav-icon-wrapper"><span class="nav-icon">⚙️</span></div>
+      <span class="nav-label">Settings</span>
+    </button>
+    <button class="nav-item" data-tab="profile-tab-screen" data-title="Profile" data-status="account">
+      <div class="nav-icon-wrapper">
+        <div class="nav-profile-avatar" id="nav-profile-avatar-display">
+          <svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#default-logo-svg"/></svg>
+        </div>
+      </div>
+      <span class="nav-label">Profile</span>
+    </button>
+  </nav>
+
+  <!-- Step 1: Login Modal (Username) -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-card">
+      <div class="modal-icon">
+        <svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#default-logo-svg"/></svg>
+      </div>
+      <h2 class="modal-title">Legend Login</h2>
+      <p class="modal-subtitle">Enter your unique username to start.</p>
+      <div class="modal-error" id="login-error"></div>
+      <input type="text" class="modal-input" id="login-username-input" placeholder="Enter username..." maxlength="20">
+      <button class="modal-btn" id="login-submit-btn">Next</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Gmail Input Modal -->
+  <div class="modal-overlay" id="gmail-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon" style="border:none; font-size:28px; background:none;">📧</div>
+      <h2 class="modal-title">Enter Gmail</h2>
+      <p class="modal-subtitle">We will send a 4-digit verification code to your email.</p>
+      <div class="modal-error" id="gmail-error"></div>
+      <input type="email" class="modal-input" id="gmail-input" placeholder="example@gmail.com">
+      <button class="modal-btn" id="gmail-submit-btn">Send Code</button>
+    </div>
+  </div>
+
+  <!-- Step 3: OTP Verification Modal -->
+  <div class="modal-overlay" id="otp-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon" style="border:none; font-size:28px; background:none;">🔐</div>
+      <h2 class="modal-title">Enter Verification Code</h2>
+      <p class="modal-subtitle">Enter the 4-digit code sent to your email.</p>
+      <div class="modal-error" id="otp-error"></div>
+      <input type="text" class="modal-input" id="otp-input" placeholder="4-digit code" maxlength="4" style="text-align: center; letter-spacing: 8px; font-size: 20px;">
+      <button class="modal-btn" id="otp-submit-btn">Verify & Register</button>
+    </div>
+  </div>
+
+  <!-- Bio Modal -->
+  <div class="modal-overlay" id="bio-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon" style="border:none; font-size:28px; background:none;">📝</div>
+      <h2 class="modal-title">Edit Bio</h2>
+      <p class="modal-subtitle">Add a few words about yourself.</p>
+      <textarea class="modal-input" id="bio-input" placeholder="Write bio..." maxlength="100"></textarea>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" id="bio-cancel-btn">Cancel</button>
+        <button class="modal-btn" id="bio-save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Chat Modal -->
+  <div class="modal-overlay" id="new-chat-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon" style="border:none; font-size:28px; background:none;">💬</div>
+      <h2 class="modal-title">New Message</h2>
+      <p class="modal-subtitle">Enter the username of the person you want to chat with.</p>
+      <div class="modal-error" id="new-chat-error"></div>
+      <input type="text" class="modal-input" id="target-username-input" placeholder="Target username..." maxlength="20">
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" id="new-chat-cancel-btn">Cancel</button>
+        <button class="modal-btn" id="new-chat-start-btn">Start Chat</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded, onValue, get, set, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB8Vkn1PuMoH4PW3N5CggZHbgSeUEqT1Ng",
+      authDomain: "legend-335a5.firebaseapp.com",
+      databaseURL: "https://legend-335a5-default-rtdb.firebaseio.com",
+      projectId: "legend-335a5",
+      storageBucket: "legend-335a5.firebasestorage.app",
+      messagingSenderId: "248656068968",
+      appId: "1:248656068968:web:33e8bfbc99e388168ecead"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let currentUsername = localStorage.getItem("chat_username");
+    let activePeer = null; 
+    let activeChatId = null;
+    let storyTimer = null;
+    let activeStoryId = null;
+    let activeStoryOwner = null;
+
+    let tempUsername = "";
+    let tempEmail = "";
+    let generatedOtp = "";
+
+    let replyingToMessage = null;
+    let selectedMessageForAction = null;
+
+    const DEFAULT_LOGO_HTML = `<svg viewBox="0 0 100 100" width="100%" height="100%"><use href="#default-logo-svg"/></svg>`;
+
+    const loginModal = document.getElementById("login-modal");
+    const loginUsernameInput = document.getElementById("login-username-input");
+    const loginSubmitBtn = document.getElementById("login-submit-btn");
+    const loginError = document.getElementById("login-error");
+
+    const gmailModal = document.getElementById("gmail-modal");
+    const gmailInput = document.getElementById("gmail-input");
+    const gmailSubmitBtn = document.getElementById("gmail-submit-btn");
+    const gmailError = document.getElementById("gmail-error");
+
+    const otpModal = document.getElementById("otp-modal");
+    const otpInput = document.getElementById("otp-input");
+    const otpSubmitBtn = document.getElementById("otp-submit-btn");
+    const otpError = document.getElementById("otp-error");
+
+    const bioModal = document.getElementById("bio-modal");
+    const bioInput = document.getElementById("bio-input");
+    const bioSaveBtn = document.getElementById("bio-save-btn");
+    const bioCancelBtn = document.getElementById("bio-cancel-btn");
+
+    const newChatModal = document.getElementById("new-chat-modal");
+    const targetUsernameInput = document.getElementById("target-username-input");
+    const newChatStartBtn = document.getElementById("new-chat-start-btn");
+    const newChatCancelBtn = document.getElementById("new-chat-cancel-btn");
+    const newChatError = document.getElementById("new-chat-error");
+    const fabStartChat = document.getElementById("fab-start-chat");
+    const addContactItem = document.getElementById("add-contact-item");
+
+    const backBtn = document.getElementById("back-btn");
+    const headerTitle = document.getElementById("header-title");
+    const headerStatus = document.getElementById("header-status");
+    const headerAvatar = document.getElementById("header-avatar");
+
+    const chatRoomScreen = document.getElementById("chat-room-screen");
+    const chatList = document.getElementById("chat-list");
+    const contactsList = document.getElementById("contacts-list");
+    const chatMessages = document.getElementById("chat-messages");
+
+    const msgInput = document.getElementById("message-input");
+    const fileInput = document.getElementById("file-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    const replyBanner = document.getElementById("reply-banner");
+    const replyBannerContent = document.getElementById("reply-banner-content");
+    const cancelReplyBtn = document.getElementById("cancel-reply-btn");
+
+    const msgActionModal = document.getElementById("msg-action-modal");
+    const actionReplyBtn = document.getElementById("action-reply-btn");
+    const actionForwardBtn = document.getElementById("action-forward-btn");
+    const actionCancelBtn = document.getElementById("action-cancel-btn");
+
+    const forwardModal = document.getElementById("forward-modal");
+    const forwardChatsList = document.getElementById("forward-chats-list");
+    const forwardCancelBtn = document.getElementById("forward-cancel-btn");
+
+    const profileAvatarLarge = document.getElementById("profile-avatar-large");
+    const profilePhotoInput = document.getElementById("profile-photo-input");
+    const profileDisplayName = document.getElementById("profile-display-name");
+    const profileDisplayHandle = document.getElementById("profile-display-handle");
+    const profileUsernameVal = document.getElementById("profile-username-val");
+    const profileBioVal = document.getElementById("profile-bio-val");
+    const profileStoriesGrid = document.getElementById("profile-stories-grid");
+
+    const editUsernameItem = document.getElementById("edit-username-item");
+    const editBioItem = document.getElementById("edit-bio-item");
+    const settingsUsernameItem = document.getElementById("settings-username-item");
+    const settingsUsernameDisplay = document.getElementById("settings-username-display");
+    const enableNotifBtn = document.getElementById("enable-notif-btn");
+
+    const addStoryItem = document.getElementById("add-story-item");
+    const storyFileInput = document.getElementById("story-file-input");
+    const myStoryAvatarDisplay = document.getElementById("my-story-avatar-display");
+    const navProfileAvatarDisplay = document.getElementById("nav-profile-avatar-display");
+    const storiesBarContainer = document.getElementById("stories-bar-container");
+
+    const storyViewerModal = document.getElementById("story-viewer-modal");
+    const storyViewerImg = document.getElementById("story-viewer-img");
+    const storyViewerAvatar = document.getElementById("story-viewer-avatar");
+    const storyViewerName = document.getElementById("story-viewer-name");
+    const storyViewerTime = document.getElementById("story-viewer-time");
+    const storyProgressFill = document.getElementById("story-progress-fill");
+    const storyCloseBtn = document.getElementById("story-close-btn");
+    const storyDeleteBtn = document.getElementById("story-delete-btn");
+    const storyLikeBtn = document.getElementById("story-like-btn");
+    const storyViewCount = document.getElementById("story-view-count");
+    const storyLikeCount = document.getElementById("story-like-count");
+    const storyCommentInput = document.getElementById("story-comment-input");
+    const storySendCommentBtn = document.getElementById("story-send-comment-btn");
+    const storyFooterOverlay = document.getElementById("story-footer-overlay");
+
+    const navItems = document.querySelectorAll(".nav-item");
+    const tabScreens = document.querySelectorAll(".tab-screen");
+
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    enableNotifBtn.addEventListener("click", () => {
+      if ("Notification" in window) {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            alert("Notifications enabled successfully!");
+          } else {
+            alert("Notification permission denied.");
+          }
+        });
+      }
+    });
+
+    function playNotificationSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 587.33;
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (e) {}
+    }
+
+    navItems.forEach(item => {
+      item.addEventListener("click", () => {
+        navItems.forEach(i => i.classList.remove("active"));
+        tabScreens.forEach(s => s.classList.remove("active-tab"));
+
+        item.classList.add("active");
+        const targetTabId = item.getAttribute("data-tab");
+        document.getElementById(targetTabId).classList.add("active-tab");
+
+        headerTitle.innerText = item.getAttribute("data-title");
+        headerStatus.innerText = item.getAttribute("data-status");
+      });
+    });
+
+    const sanitizeKey = (name) => name.toLowerCase().trim().replace(/[.#$\[\]]/g, "_");
+
+    function getChatId(user1, user2) {
+      const k1 = sanitizeKey(user1);
+      const k2 = sanitizeKey(user2);
+      return k1 < k2 ? `${k1}_${k2}` : `${k2}_${k1}`;
+    }
+
+    async function loadProfileData() {
+      if (!currentUsername) return;
+      const myKey = sanitizeKey(currentUsername);
+      const userRef = ref(db, `usernames/${myKey}`);
+      const snapshot = await get(userRef);
+
+      profileDisplayName.innerText = currentUsername;
+      profileDisplayHandle.innerText = `@${currentUsername}`;
+      profileUsernameVal.innerText = `@${currentUsername}`;
+      settingsUsernameDisplay.innerText = `@${currentUsername}`;
+
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        profileBioVal.innerText = data.bio || "Hey there! I am using Legend Chat.";
+        if (data.photo) {
+          profileAvatarLarge.innerHTML = `<img src="${data.photo}">`;
+          myStoryAvatarDisplay.innerHTML = `<img src="${data.photo}">`;
+          navProfileAvatarDisplay.innerHTML = `<img src="${data.photo}">`;
+        } else {
+          profileAvatarLarge.innerHTML = DEFAULT_LOGO_HTML;
+          myStoryAvatarDisplay.innerHTML = DEFAULT_LOGO_HTML;
+          navProfileAvatarDisplay.innerHTML = DEFAULT_LOGO_HTML;
+        }
+      }
+    }
+
+    addStoryItem.addEventListener("click", () => storyFileInput.click());
+
+    storyFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        await push(ref(db, `stories`), {
+          sender: currentUsername,
+          photo: reader.result,
+          timestamp: Date.now()
+        });
+        alert("Story posted successfully!");
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function loadStories() {
+      const storiesRef = ref(db, "stories");
+      onValue(storiesRef, async (snapshot) => {
+        while (storiesBarContainer.children.length > 2) {
+          storiesBarContainer.removeChild(storiesBarContainer.lastChild);
+        }
+        profileStoriesGrid.innerHTML = "";
+        
+        const data = snapshot.val() || {};
+        const activeStories = {};
+        const myProfileStories = [];
+        const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+
+        Object.keys(data).forEach(id => {
+          const item = data[id];
+          if (!item.sender) return;
+          const isMe = item.sender.toLowerCase().trim() === currentUsername.toLowerCase().trim();
+          if (isMe) myProfileStories.push({ ...item, id });
+          if (item.timestamp > twentyFourHoursAgo) {
+            if (!activeStories[item.sender] || item.timestamp > activeStories[item.sender].timestamp) {
+              activeStories[item.sender] = { ...item, id };
+            }
+          }
+        });
+
+        if (myProfileStories.length === 0) {
+          profileStoriesGrid.innerHTML = `<div style="grid-column: span 3; text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No stories posted yet.</div>`;
+        } else {
+          myProfileStories.reverse().forEach(story => {
+            const viewsCount = story.views ? Object.keys(story.views).length : 0;
+            const likesCount = story.likes ? Object.keys(story.likes).length : 0;
+            const cell = document.createElement("div");
+            cell.className = "profile-story-cell";
+            cell.innerHTML = `<img src="${story.photo}"><div class="profile-story-stats"><span>👁️ ${viewsCount}</span><span>❤️ ${likesCount}</span></div>`;
+            cell.addEventListener("click", () => openStoryViewer(currentUsername, story, null, true));
+            profileStoriesGrid.appendChild(cell);
+          });
+        }
+
+        for (const sender of Object.keys(activeStories)) {
+          const storyData = activeStories[sender];
+          if (sender.toLowerCase().trim() === currentUsername.toLowerCase().trim()) continue;
+          const peerKey = sanitizeKey(sender);
+          const peerSnap = await get(ref(db, `usernames/${peerKey}`));
+          let avatarContent = DEFAULT_LOGO_HTML;
+          if (peerSnap.exists() && peerSnap.val().photo) avatarContent = `<img src="${peerSnap.val().photo}">`;
+
+          const storyElem = document.createElement("div");
+          storyElem.className = "story-item";
+          storyElem.innerHTML = `<div class="story-ring"><div class="story-avatar">${avatarContent}</div></div><span class="story-username">${sender}</span>`;
+          storyElem.addEventListener("click", () => openStoryViewer(sender, storyData, peerSnap.exists() ? peerSnap.val().photo : null, false));
+          storiesBarContainer.appendChild(storyElem);
+        }
+      });
+    }
+
+    async function openStoryViewer(sender, storyData, photoUrl, isMyStory = false) {
+      activeStoryOwner = sender;
+      activeStoryId = storyData.id;
+      storyViewerName.innerText = sender;
+      storyViewerImg.src = storyData.photo;
+      storyCommentInput.value = "";
+
+      storyFooterOverlay.style.display = isMyStory ? "none" : "flex";
+      storyDeleteBtn.style.display = isMyStory ? "flex" : "none";
+
+      if (isMyStory) {
+        const mySnap = await get(ref(db, `usernames/${sanitizeKey(currentUsername)}`));
+        storyViewerAvatar.innerHTML = mySnap.exists() && mySnap.val().photo ? `<img src="${mySnap.val().photo}">` : DEFAULT_LOGO_HTML;
+      } else {
+        storyViewerAvatar.innerHTML = photoUrl ? `<img src="${photoUrl}">` : DEFAULT_LOGO_HTML;
+        await set(ref(db, `stories/${activeStoryId}/views/${sanitizeKey(currentUsername)}`), true);
+      }
+
+      const storyRef = ref(db, `stories/${activeStoryId}`);
+      onValue(storyRef, (snap) => {
+        if (!snap.exists()) return;
+        const val = snap.val();
+        storyViewCount.innerText = Object.keys(val.views || {}).length;
+        storyLikeCount.innerText = Object.keys(val.likes || {}).length;
+        if (val.likes && val.likes[sanitizeKey(currentUsername)]) storyLikeBtn.classList.add("liked");
+        else storyLikeBtn.classList.remove("liked");
+      }, { onlyOnce: true });
+
+      storyViewerTime.innerText = `Today at ${new Date(storyData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      storyViewerModal.style.display = "flex";
+      storyProgressFill.style.width = "0%";
+
+      let width = 0;
+      clearInterval(storyTimer);
+      storyTimer = setInterval(() => {
+        if (width >= 100) { clearInterval(storyTimer); closeStoryViewer(); }
+        else { width += 0.5; storyProgressFill.style.width = width + "%"; }
+      }, 150);
+    }
+
+    function closeStoryViewer() {
+      clearInterval(storyTimer);
+      storyViewerModal.style.display = "none";
+      activeStoryId = null;
+      activeStoryOwner = null;
+    }
+
+    storyCloseBtn.addEventListener("click", closeStoryViewer);
+    storyDeleteBtn.addEventListener("click", async () => {
+      if (activeStoryId && confirm("Delete this story?")) {
+        await remove(ref(db, `stories/${activeStoryId}`));
+        closeStoryViewer();
+      }
+    });
+
+    storyLikeBtn.addEventListener("click", async () => {
+      if (!activeStoryId) return;
+      const likeRef = ref(db, `stories/${activeStoryId}/likes/${sanitizeKey(currentUsername)}`);
+      const snap = await get(likeRef);
+      if (snap.exists()) await set(likeRef, null);
+      else await set(likeRef, true);
+    });
+
+    async function sendStoryComment() {
+      const text = storyCommentInput.value.trim();
+      if (!text || !activeStoryOwner) return;
+      const chatId = getChatId(currentUsername, activeStoryOwner);
+      await push(ref(db, `direct_chats/${chatId}/messages`), {
+        sender: currentUsername, text: `Replying to story: ${text}`, timestamp: Date.now()
+      });
+      await set(ref(db, `direct_chats/${chatId}/last_message`), { sender: currentUsername, text: `Replying to story: ${text}`, timestamp: Date.now() });
+      alert("Reply sent as direct message!");
+      storyCommentInput.value = "";
+    }
+
+    storySendCommentBtn.addEventListener("click", sendStoryComment);
+
+    // ─────────────────────────────────────────
+    // የ Authentication & OTP Flow
+    // ─────────────────────────────────────────
+    function showLoginModal() {
+      loginModal.style.display = "flex";
+      gmailModal.style.display = "none";
+      otpModal.style.display = "none";
+      loginUsernameInput.value = currentUsername || "";
+      loginError.style.display = "none";
+    }
+
+    // Step 1: Username ሲያስገባ
+    loginSubmitBtn.addEventListener("click", async () => {
+      const val = loginUsernameInput.value.trim();
+      if (!val) { loginError.innerText = "Empty username!"; loginError.style.display = "block"; return; }
+      const key = sanitizeKey(val);
+      const snap = await get(ref(db, `usernames/${key}`));
+      
+      if (snap.exists() && val.toLowerCase() !== (currentUsername || "").toLowerCase()) {
+        loginError.innerText = `⚠️ "${val}" already taken!`; loginError.style.display = "block";
+      } else {
+        tempUsername = val;
+        loginModal.style.display = "none";
+        gmailModal.style.display = "flex";
+        gmailError.style.display = "none";
+      }
+    });
+
+    // Step 2: Gmail ሲያስገባ (OTP ማመንጨት እና መላክ)
+    gmailSubmitBtn.addEventListener("click", () => {
+      const email = gmailInput.value.trim();
+      if (!email || !email.includes("@")) {
+        gmailError.innerText = "Please enter a valid Gmail address!";
+        gmailError.style.display = "block";
+        return;
+      }
+      tempEmail = email;
+      // 4 ዲጂት ኮድ ማመንጨት (ከ 1000 እስከ 9999)
+      generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      
+      // ለሙከራ እንዲመችዎ በ Alert ያሳየዋል (በኋላ በ EmailJS ሪል ኢሜይል ማድረግ ይቻላል)
+      alert(`[Legend Chat Verification]\nYour 4-digit code is: ${generatedOtp}`);
+
+      gmailModal.style.display = "none";
+      otpModal.style.display = "flex";
+      otpError.style.display = "none";
+      otpInput.value = "";
+    });
+
+    // Step 3: OTP ኮዱን አረጋግጦ አካውንት መክፈት
+    otpSubmitBtn.addEventListener("click", async () => {
+      const enteredOtp = otpInput.value.trim();
+      if (enteredOtp !== generatedOtp) {
+        otpError.innerText = "Incorrect verification code!";
+        otpError.style.display = "block";
+        return;
+      }
+
+      // ኮዱ ትክክል ከሆነ በ Database ይመዝገባል
+      const key = sanitizeKey(tempUsername);
+      await set(ref(db, `usernames/${key}`), { 
+        name: tempUsername, 
+        email: tempEmail,
+        created: Date.now() 
+      });
+
+      localStorage.setItem("chat_username", tempUsername);
+      currentUsername = tempUsername;
+      
+      loadProfileData();
+      otpModal.style.display = "none";
+      loadUserChats();
+      loadStories();
+    });
+
+    if (!currentUsername) showLoginModal();
+    else { loadProfileData(); loginModal.style.display = "none"; loadUserChats(); loadStories(); }
+
+    editUsernameItem.addEventListener("click", showLoginModal);
+    settingsUsernameItem.addEventListener("click", showLoginModal);
+
+    const openNewChatModal = () => { newChatModal.style.display = "flex"; targetUsernameInput.value = ""; newChatError.style.display = "none"; };
+    fabStartChat.addEventListener("click", openNewChatModal);
+    addContactItem.addEventListener("click", openNewChatModal);
+    newChatCancelBtn.addEventListener("click", () => newChatModal.style.display = "none");
+
+    async function handleStartNewChat() {
+      const target = targetUsernameInput.value.trim();
+      if (!target) return;
+      if (target.toLowerCase() === currentUsername.toLowerCase()) { newChatError.innerText = "Cannot chat with yourself!"; newChatError.style.display = "block"; return; }
+      const snap = await get(ref(db, `usernames/${sanitizeKey(target)}`));
+      if (!snap.exists()) { newChatError.innerText = "User not found!"; newChatError.style.display = "block"; }
+      else {
+        const peer = snap.val().name;
+        const myKey = sanitizeKey(currentUsername);
+        const peerKey = sanitizeKey(peer);
+        await set(ref(db, `user_chats/${myKey}/${peerKey}`), { name: peer });
+        await set(ref(db, `user_chats/${peerKey}/${myKey}`), { name: currentUsername });
+        newChatModal.style.display = "none";
+        openChatRoom(peer);
+      }
+    }
+    newChatStartBtn.addEventListener("click", handleStartNewChat);
+
+    function loadUserChats() {
+      const myKey = sanitizeKey(currentUsername);
+      onValue(ref(db, `user_chats/${myKey}`), (snapshot) => {
+        chatList.innerHTML = ""; contactsList.innerHTML = "";
+        const chats = snapshot.val() || {};
+        if (Object.keys(chats).length === 0) {
+          chatList.innerHTML = `<div style="padding: 50px 20px; text-align: center; color: #64748b;"><h3>No conversations</h3></div>`;
+          return;
+        }
+        Object.keys(chats).forEach(async (peerKey) => {
+          const peerName = chats[peerKey].name;
+          const chatId = getChatId(currentUsername, peerName);
+          const peerSnap = await get(ref(db, `usernames/${peerKey}`));
+          let avatarHtml = peerSnap.exists() && peerSnap.val().photo ? `<img src="${peerSnap.val().photo}">` : DEFAULT_LOGO_HTML;
+
+          const item = document.createElement("div");
+          item.className = "chat-item";
+          item.innerHTML = `<div class="chat-item-avatar">${avatarHtml}</div><div class="chat-item-content"><div class="chat-item-top"><span class="chat-item-name">${peerName}</span><span class="chat-item-time" id="time-${chatId}"></span></div><div class="chat-item-msg" id="last-${chatId}">Tap to chat...</div></div><div class="unread-badge" id="badge-${chatId}">0</div>`;
+          item.addEventListener("click", () => { document.getElementById(`badge-${chatId}`).style.display = "none"; openChatRoom(peerName); });
+          chatList.appendChild(item);
+
+          const contactItem = document.createElement("div");
+          contactItem.className = "chat-item";
+          contactItem.innerHTML = `<div class="chat-item-avatar">${avatarHtml}</div><div class="chat-item-content"><div class="chat-item-name">${peerName}</div><div class="chat-item-msg">@${peerName.toLowerCase()}</div></div>`;
+          contactItem.addEventListener("click", () => openChatRoom(peerName));
+          contactsList.appendChild(contactItem);
+
+          onValue(ref(db, `direct_chats/${chatId}/last_message`), (lastSnap) => {
+            const val = lastSnap.val();
+            if (val) {
+              document.getElementById(`last-${chatId}`).innerText = (val.sender === currentUsername ? "You: " : "") + (val.text || "Attachment");
+              document.getElementById(`time-${chatId}`).innerText = new Date(val.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              if (val.sender !== currentUsername && activePeer !== peerName) {
+                playNotificationSound();
+                const badge = document.getElementById(`badge-${chatId}`);
+                badge.style.display = "block"; badge.innerText = "New";
+              }
+            }
+          });
+        });
+      });
+    }
+
+    async function openChatRoom(peerName) {
+      activePeer = peerName;
+      activeChatId = getChatId(currentUsername, activePeer);
+      headerTitle.innerText = activePeer;
+      headerStatus.innerText = "online";
+      
+      const peerSnap = await get(ref(db, `usernames/${sanitizeKey(peerName)}`));
+      headerAvatar.innerHTML = peerSnap.exists() && peerSnap.val().photo ? `<img src="${peerSnap.val().photo}">` : DEFAULT_LOGO_HTML;
+
+      backBtn.style.display = "block";
+      chatMessages.innerHTML = "";
+      chatRoomScreen.classList.add("active");
+
+      onChildAdded(ref(db, `direct_chats/${activeChatId}/messages`), (snapshot) => {
+        renderMessage({ ...snapshot.val(), id: snapshot.key });
+      });
+    }
+
+    backBtn.addEventListener("click", () => {
+      chatRoomScreen.classList.remove("active");
+      backBtn.style.display = "none";
+      activePeer = null; activeChatId = null;
+      cancelReply();
+    });
+
+    function renderMessage(data) {
+      const isMe = data.sender === currentUsername;
+      const wrapperDiv = document.createElement("div");
+      wrapperDiv.className = `msg-wrapper ${isMe ? 'sent' : 'received'}`;
+
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "msg";
+
+      let html = "";
+      if (data.replyTo) {
+        html += `<div class="reply-quote"><div class="reply-quote-sender">${data.replyTo.sender}</div><div>${data.replyTo.text || 'Attachment'}</div></div>`;
+      }
+
+      if (data.text) {
+        html += `<div class="msg-text">${data.text}</div>`;
+      }
+
+      if (data.fileData) {
+        if (data.fileType.startsWith("image/")) html += `<img src="${data.fileData}" />`;
+        else html += `<a class="file-card" href="${data.fileData}" download>📄 <span>${data.fileName || 'File'}</span></a>`;
+      }
+
+      html += `<div class="msg-footer"><span>${new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>`;
+      msgDiv.innerHTML = html;
+      wrapperDiv.appendChild(msgDiv);
+      chatMessages.appendChild(wrapperDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      let pressTimer = null;
+      const startPress = () => {
+        pressTimer = setTimeout(() => {
+          selectedMessageForAction = data;
+          msgActionModal.style.display = "flex";
+        }, 500);
+      };
+
+      const cancelPress = () => clearTimeout(pressTimer);
+
+      wrapperDiv.addEventListener("mousedown", startPress);
+      wrapperDiv.addEventListener("touchstart", startPress);
+      wrapperDiv.addEventListener("mouseup", cancelPress);
+      wrapperDiv.addEventListener("touchend", cancelPress);
+      wrapperDiv.addEventListener("touchmove", cancelPress);
+    }
+
+    actionCancelBtn.addEventListener("click", () => { msgActionModal.style.display = "none"; });
+
+    actionReplyBtn.addEventListener("click", () => {
+      msgActionModal.style.display = "none";
+      replyingToMessage = selectedMessageForAction;
+      replyBannerContent.innerHTML = `<b>Replying to ${replyingToMessage.sender}:</b> ${replyingToMessage.text || 'Attachment'}`;
+      replyBanner.style.display = "flex";
+      msgInput.focus();
+    });
+
+    cancelReplyBtn.addEventListener("click", cancelReply);
+    function cancelReply() {
+      replyingToMessage = null;
+      replyBanner.style.display = "none";
+    }
+
+    actionForwardBtn.addEventListener("click", async () => {
+      msgActionModal.style.display = "none";
+      forwardChatsList.innerHTML = "";
+      const myKey = sanitizeKey(currentUsername);
+      const snap = await get(ref(db, `user_chats/${myKey}`));
+      const chats = snap.val() || {};
+
+      Object.keys(chats).forEach(peerKey => {
+        const peerName = chats[peerKey].name;
+        const btn = document.createElement("button");
+        btn.className = "msg-action-btn";
+        btn.style.textAlign = "left";
+        btn.innerText = peerName;
+        btn.addEventListener("click", async () => {
+          const targetChatId = getChatId(currentUsername, peerName);
+          const msgPayload = {
+            sender: currentUsername,
+            text: `[Forwarded] ${selectedMessageForAction.text || ''}`,
+            fileData: selectedMessageForAction.fileData || '',
+            fileType: selectedMessageForAction.fileType || '',
+            fileName: selectedMessageForAction.fileName || '',
+            timestamp: Date.now()
+          };
+          await push(ref(db, `direct_chats/${targetChatId}/messages`), msgPayload);
+          await set(ref(db, `direct_chats/${targetChatId}/last_message`), {
+            sender: currentUsername, text: msgPayload.text || 'Forwarded file', timestamp: Date.now()
+          });
+          forwardModal.style.display = "none";
+          alert(`Forwarded to ${peerName}!`);
+        });
+        forwardChatsList.appendChild(btn);
+      });
+      forwardModal.style.display = "flex";
+    });
+
+    forwardCancelBtn.addEventListener("click", () => { forwardModal.style.display = "none"; });
+
+    sendBtn.addEventListener("click", async () => {
+      const text = msgInput.value.trim();
+      const file = fileInput.files[0];
+      if (!activeChatId || (!text && !file)) return;
+
+      let fileData = "", fileType = "", fileName = "";
+      if (file) {
+        fileName = file.name;
+        fileType = file.type;
+        fileData = await new Promise((res) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const msgPayload = {
+        sender: currentUsername,
+        text: text,
+        fileData: fileData,
+        fileType: fileType,
+        fileName: fileName,
+        replyTo: replyingToMessage ? { sender: replyingToMessage.sender, text: replyingToMessage.text } : null,
+        timestamp: Date.now()
+      };
+
+      await push(ref(db, `direct_chats/${activeChatId}/messages`), msgPayload);
+      await set(ref(db, `direct_chats/${activeChatId}/last_message`), {
+        sender: currentUsername, text: text || 'Attachment', timestamp: Date.now()
+      });
+
+      const myKey = sanitizeKey(currentUsername);
+      const peerKey = sanitizeKey(activePeer);
+      await set(ref(db, `user_chats/${myKey}/${peerKey}`), { name: activePeer });
+      await set(ref(db, `user_chats/${peerKey}/${myKey}`), { name: currentUsername });
+
+      msgInput.value = "";
+      fileInput.value = "";
+      cancelReply();
+    });
+
+    msgInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendBtn.click(); });
+  </script>
+</body>
+</html>
